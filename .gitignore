@@ -7,6 +7,7 @@ __pycache__/
 venv/
 env/
 .env
+*.apk
 *.apk.idsig
 temp_*/
 *.aligned-debugSigned.apk
