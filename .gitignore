@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
+venv/
+env/
+.env
+*.apk.idsig
+temp_*/
+*.aligned-debugSigned.apk
