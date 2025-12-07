@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import tempfile
 import logging
+import requests
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 
@@ -15,6 +16,47 @@ logger = logging.getLogger(__name__)
 
 # States
 WAITING_FOR_URL = 1
+
+def download_base_apk():
+    """Download base APK from Google Drive if it doesn't exist"""
+    if os.path.exists('magnet.apk'):
+        logger.info("Base APK already exists")
+        return True
+    
+    apk_url = os.environ.get('APK_URL')
+    if not apk_url:
+        logger.error("APK_URL environment variable not set!")
+        return False
+    
+    try:
+        logger.info(f"Downloading base APK from Google Drive...")
+        
+        # Handle Google Drive download
+        session = requests.Session()
+        response = session.get(apk_url, stream=True)
+        
+        # Check if we need to confirm download (large files)
+        if 'confirm' in response.text.lower():
+            # Extract confirmation token
+            for key, value in response.cookies.items():
+                if key.startswith('download_warning'):
+                    params = {'confirm': value, 'id': apk_url.split('id=')[1]}
+                    response = session.get(apk_url, params=params, stream=True)
+                    break
+        
+        # Download the file
+        with open('magnet.apk', 'wb') as f:
+            for chunk in response.iter_content(chunk_size=32768):
+                if chunk:
+                    f.write(chunk)
+        
+        file_size = os.path.getsize('magnet.apk')
+        logger.info(f"Base APK downloaded successfully ({file_size} bytes)")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to download APK: {str(e)}")
+        return False
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -146,9 +188,9 @@ def main():
         logger.error("BOT_TOKEN environment variable not set!")
         return
     
-    # Check if base APK exists
-    if not os.path.exists('magnet.apk'):
-        logger.error("magnet.apk not found!")
+    # Download base APK if needed
+    if not download_base_apk():
+        logger.error("Failed to get base APK!")
         return
     
     application = Application.builder().token(token).build()
